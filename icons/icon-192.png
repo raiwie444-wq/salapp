@@ -1,1 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <!-- Очень нежный и мягкий пастельно-розовый градиент -->
+    <linearGradient id="softBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff0f5" />
+      <stop offset="100%" stop-color="#fbcfe8" />
+    </linearGradient>
+    
+    <!-- Аккуратная мягкая тень -->
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#db2777" flood-opacity="0.15"/>
+    </filter>
+  </defs>
 
+  <!-- База иконки со скругленными углами в стиле iOS -->
+  <rect x="12" y="12" width="168" height="168" rx="38" fill="url(#softBg)" filter="url(#softShadow)" stroke="#ffffff" stroke-width="2" />
+
+  <!-- Центрированный знак гривны и блеск -->
+  <g transform="translate(96, 96)">
+    <!-- Знак гривны глубокого розового оттенка для идеального контраста -->
+    <text x="0" y="22" font-family="'Nunito', sans-serif" font-weight="800" font-size="88" fill="#9d174d" text-anchor="middle">₴</text>
+    
+    <!-- Изящная минималистичная искорка вверху справа -->
+    <path d="M 42 -36 L 45 -46 L 55 -49 L 45 -52 L 42 -62 L 39 -52 L 29 -49 L 39 -46 Z" fill="#ffffff" opacity="0.9" />
+  </g>
+</svg>
