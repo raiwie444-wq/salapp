@@ -769,5 +769,172 @@ if ("serviceWorker" in navigator) {
   });
 }
 </script>
+    <!-- Подключаем Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Инициализация Supabase
+        const supabaseUrl = 'sb_publishable_Z-ZasdYDusCO-lyQUuHnWA_uW0u6c0V';
+        const supabaseKey = 'sb_secret_tJSrZdApEOAdYcx4b3LBrA_YIhyrgTf';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
+        // Уникальный ID для твоей таблицы (можно потом привязать к логину)
+        const MY_USER_ID = 'rabstvo-main-user';
+
+        // Конфиги месяцев (оставила твои без изменений)
+        const monthsConfig2026 = [
+            { id: '2026-07', name: 'Июль', days: 31, startDay: 3, theme: { bg: 'from-blue-500 to-indigo-600', headerBg: 'bg-blue-100 text-blue-900', focus: '#3b82f6', thumb: '#60a5fa', divider: '#93c5fd', textHex: '#2563eb' } },
+            { id: '2026-08', name: 'Август', days: 31, startDay: 6, theme: { bg: 'from-pink-500 to-rose-600', headerBg: 'bg-pink-100 text-pink-900', focus: '#ec4899', thumb: '#f472b6', divider: '#f9a8d4', textHex: '#db2777' } },
+            /* ... остальные месяцы 2026 ... */
+        ];
+
+        const monthsConfig2027 = [
+            /* ... твои месяцы 2027 ... */
+        ];
+
+        let currentYear = '2026';
+        let currentMonthId = '2026-07';
+        let appData = {};
+        let isDarkMode = localStorage.getItem('zpka_dark') === 'true';
+        let isSecretMode = false;
+        let knownShops = { "уш": 13, "1": 13 };
+        let salesChartInstance = null;
+        let usdRate = 41.50;
+
+        // Автоматическое определение текущей даты
+        const todayDate = new Date();
+        const todayYyyy = todayDate.getFullYear().toString();
+        const todayMm = String(todayDate.getMonth() + 1).padStart(2, '0');
+        const todayDd = String(todayDate.getDate()).padStart(2, '0') + '.' + todayMm;
+        const autoMonthId = `${todayYyyy}-${todayMm}`;
+
+        function generateEmptyDays(monthConfig) {
+            let days = [];
+            let [y, m] = monthConfig.id.split('-');
+            for (let i = 1; i <= monthConfig.days; i++) {
+                let date = new Date(parseInt(y), parseInt(m) - 1, i);
+                let dayName = date.toLocaleDateString('ru-RU', { weekday: 'short' });
+                let weekNum = Math.ceil((i + monthConfig.startDay - 1) / 7);
+                
+                days.push({
+                    dayNum: i,
+                    dateStr: `${String(i).padStart(2, '0')}.${m}`,
+                    dayName: dayName.charAt(0).toUpperCase() + dayName.slice(1),
+                    shop: '', rate: 13, sales: '', salary: 0,
+                    isSunday: date.getDay() === 0, weekId: weekNum
+                });
+            }
+            return days;
+        }
+
+        async function initApp() {
+            if (isDarkMode) document.documentElement.classList.add('dark');
+            
+            // Пытаемся загрузить данные с сервера Supabase
+            const { data, error } = await supabase
+                .from('app_data')
+                .select('data_json, shops_json')
+                .eq('user_id', MY_USER_ID)
+                .single();
+
+            if (data && data.data_json) {
+                appData = data.data_json;
+                if (data.shops_json) knownShops = data.shops_json;
+            } else {
+                // Если пусто, генерируем заново
+                [...monthsConfig2026, ...monthsConfig2027].forEach(m => {
+                    appData[m.id] = { days: generateEmptyDays(m), fop: { d1: '', a1: '', d2: '', a2: '' } };
+                });
+            }
+
+            // Устанавливаем текущий год и месяц автоматически
+            if (todayYyyy === '2026' || todayYyyy === '2027') {
+                currentYear = todayYyyy;
+                currentMonthId = autoMonthId;
+            }
+
+            fetch('https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?valcode=USD&json=true')
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data[0] && data[0].rate) {
+                        usdRate = data[0].rate;
+                        document.getElementById('usd-rate').innerText = usdRate.toFixed(2);
+                        calculateTotals();
+                    }
+                }).catch(() => {});
+            
+            switchYear(currentYear);
+            
+            // Скроллим к сегодняшнему дню
+            setTimeout(() => {
+                const todayRow = document.getElementById('row-today');
+                if (todayRow) todayRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 500);
+        }
+
+        async function saveApp() {
+            // Отправляем данные на общий сервер
+            const { error } = await supabase
+                .from('app_data')
+                .upsert({ 
+                    user_id: MY_USER_ID, 
+                    data_json: appData,
+                    shops_json: knownShops
+                }, { onConflict: 'user_id' });
+            
+            if (error) console.error("Ошибка сохранения в базу:", error);
+        }
+
+        // --- В renderTable() добавлена подсветка текущего дня ---
+        function renderTable() {
+            // ... (твое начало функции updateShopDatalist и tbody.innerHTML = '') ...
+            
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            
+            if (!appData[currentMonthId]) {
+                const config = [...monthsConfig2026, ...monthsConfig2027].find(m => m.id === currentMonthId);
+                appData[currentMonthId] = { days: generateEmptyDays(config), fop: { d1: '', a1: '', d2: '', a2: '' } };
+            }
+
+            const monthData = appData[currentMonthId].days;
+            let maxSales = 0; // ... расчет maxSales ...
+
+            monthData.forEach((day, index) => {
+                // Проверяем, сегодняшний ли это день
+                const isToday = (day.dateStr === todayDd && currentMonthId === autoMonthId);
+                
+                const tr = document.createElement('tr');
+                tr.className = `record-row border-b border-pink-50/50 dark:border-gray-700/50 ${day.isSunday ? 'week-divider' : ''}`;
+                
+                // Подсветка строки и добавление ID для скролла
+                if (isToday) {
+                    tr.id = 'row-today';
+                    tr.classList.add('bg-pink-50', 'dark:bg-pink-900/20', 'border-l-4', 'border-l-pink-500');
+                }
+
+                let currentSales = parseFloat(day.sales) || 0;
+                let isMax = maxSales > 0 && currentSales === maxSales && day.shop.trim() !== '';
+                if (isMax) tr.classList.add('max-sales');
+
+                let shopClass = /* ... твоя логика цветов shopClass ... */;
+                const displaySales = isSecretMode ? (day.sales ? '***' : '') : day.sales;
+                const displaySalary = isSecretMode ? (day.salary > 0 ? '***' : '-') : (day.salary > 0 ? day.salary.toLocaleString('ru-RU') : '-');
+
+                // Добавляем красивую плашку "Сегодня" 
+                const todayBadge = isToday ? `<span class="ml-1 inline-flex items-center rounded-md bg-pink-500 px-1.5 py-0.5 text-[10px] font-black text-white shadow-sm ring-1 ring-inset ring-pink-500/10">сегодня</span>` : '';
+
+                tr.innerHTML = `
+                    <td class="p-2 md:p-4 text-sm font-semibold opacity-80 ${isToday ? 'text-pink-600 dark:text-pink-400' : ''}">${day.dateStr}</td>
+                    <td class="p-2 md:p-4 text-sm font-bold opacity-60">${day.dayName} ${isMax ? '👑' : ''} ${todayBadge}</td>
+                    <!-- ... твои инпуты ... -->
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            // ... (обновление данных ФОП и calculateTotals) ...
+        }
+
+        // Остальные функции (switchYear, updateData, calculateTotals, etc.) остаются почти без изменений, 
+        // главное, чтобы везде вызывался обновленный saveApp() вместо localStorage.
 </body>
 </html>
