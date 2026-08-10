@@ -359,15 +359,23 @@
         }
 
         async function saveApp() {
-            const { error } = await db
+            // Сначала пробуем просто обновить существующую запись
+            const { data, error: updateError } = await db
                 .from('salary_records')
-                .upsert({ 
-                    user_id: MY_USER_ID, 
-                    data_json: appData,
-                    shops_json: knownShops
-                }, { onConflict: 'user_id' });
-            if (error) console.error("Ошибка сохранения в базу:", error);
-        }
+                .update({ data_json: appData, shops_json: knownShops })
+                .eq('user_id', MY_USER_ID)
+                .select();
+
+            // Если базы для этого юзера еще нет, создаем новую с нуля
+            if (!data || data.length === 0) {
+                const { error: insertError } = await db
+                    .from('salary_records')
+                    .insert([{ user_id: MY_USER_ID, data_json: appData, shops_json: knownShops }]);
+                if (insertError) console.error("Ошибка создания в базе:", insertError);
+            } else if (updateError) {
+                console.error("Ошибка обновления в базе:", updateError);
+            }
+    
 
         function switchYear(year) {
             currentYear = year;
