@@ -12,6 +12,8 @@
     <title>зпка</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Подключаем Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
@@ -34,7 +36,12 @@
         ::-webkit-scrollbar-thumb { background: var(--thumb-color, #f9a8d4); border-radius: 4px; }
         
         .record-row { transition: all 0.2s ease-in-out; }
-        .record-row.max-sales { border: 2px solid var(--focus-color, #ec4899); box-shadow: 0 4px 12px rgba(236, 72, 153, 0.15); }
+        /* Подсветка сегодняшнего дня */
+        .today-row { 
+            border: 2px solid var(--focus-color, #ec4899); 
+            box-shadow: 0 4px 12px rgba(236, 72, 153, 0.15); 
+            background-color: var(--focus-bg, #fdf2f8); 
+        }
         
         input {
             width: 100%; background-color: transparent; border: 1px solid transparent;
@@ -49,6 +56,7 @@
         html.dark .bg-white { background-color: #1f2937 !important; border-color: #374151 !important; }
         html.dark input { color: #f3f4f6; }
         html.dark input:focus { background-color: #111827; box-shadow: none; }
+        html.dark .today-row { background-color: rgba(236, 72, 153, 0.1); }
     </style>
 </head>
 <body class="p-4 md:p-8 min-h-screen">
@@ -119,18 +127,18 @@
                             <span class="text-lg font-bold"><span id="total-sales-ush">0</span> ₴</span>
                         </div>
                         <div class="flex justify-between items-end border-b border-white/20 pb-2">
-                            <span class="text-sm opacity-90">В среднем в этом месяце за смену:</span>
+                            <span class="text-sm opacity-90">В среднем за смену (чистыми):</span>
                             <span class="text-lg font-bold"><span id="avg-per-shift">0</span> <span class="secret-text">₴</span></span>
                         </div>
-                        <div class="flex justify-between items-end border-b border-white/20 pb-2">
-                            <span class="text-sm font-black uppercase opacity-90">ИТОГО:</span>
-                            <span class="text-lg font-bold"><span id="total-fop">0</span> <span class="secret-text">₴</span></span>
+                        <div class="flex justify-between items-end border-b border-white/20 pb-2 text-rose-200">
+                            <span class="text-sm font-black uppercase opacity-90">УЖЕ ВЫПЛАТИЛИ (ФОП):</span>
+                            <span class="text-lg font-bold">- <span id="total-fop">0</span> <span class="secret-text">₴</span></span>
                         </div>
                         
                         <div class="pt-2 space-y-3">
                             <div class="bg-white text-gray-800 p-4 rounded-2xl shadow-inner mt-2 relative">
                                 <div class="flex justify-between items-center mb-1">
-                                    <span class="block text-xs font-black uppercase tracking-wider opacity-70">ИТОГО + ЗАМЕНЫ:</span>
+                                    <span class="block text-xs font-black uppercase tracking-wider opacity-70">ОСТАЛОСЬ ПОЛУЧИТЬ:</span>
                                     <span id="salary-diff" class="text-xs font-black px-2 py-0.5 rounded-full"></span>
                                 </div>
                                 <div class="flex items-baseline gap-3">
@@ -166,15 +174,15 @@
                 </div>
 
                 <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-lg border border-pink-100 dark:border-gray-700 p-5">
-                    <h3 class="text-lg font-bold text-pink-800 dark:text-pink-300 mb-3">💸 Выплаты ФОП</h3>
+                    <h3 class="text-lg font-bold text-pink-800 dark:text-pink-300 mb-3">💸 Авансы (ФОП)</h3>
                     <div class="space-y-3">
                         <div class="flex gap-2">
-                            <input type="text" id="fop1_date" placeholder="Дата" class="w-24 bg-pink-50 dark:bg-gray-700 text-sm font-medium" onchange="updateFop(1, 'date', this.value)">
-                            <input type="number" id="fop1_amount" placeholder="Сумма (₴)" class="flex-1 bg-pink-50 dark:bg-gray-700 font-bold" onchange="updateFop(1, 'amount', this.value)">
+                            <input type="text" id="fop1_date" placeholder="Число (напр. 15)" class="w-32 bg-pink-50 dark:bg-gray-700 text-sm font-medium" onchange="updateFop(1, 'date', this.value)">
+                            <input type="number" id="fop1_amount" placeholder="Сумма (₴)" class="flex-1 bg-pink-50 dark:bg-gray-700 font-bold text-rose-500" onchange="updateFop(1, 'amount', this.value)">
                         </div>
                         <div class="flex gap-2">
-                            <input type="text" id="fop2_date" placeholder="Дата" class="w-24 bg-pink-50 dark:bg-gray-700 text-sm font-medium" onchange="updateFop(2, 'date', this.value)">
-                            <input type="number" id="fop2_amount" placeholder="Сумма (₴)" class="flex-1 bg-pink-50 dark:bg-gray-700 font-bold" onchange="updateFop(2, 'amount', this.value)">
+                            <input type="text" id="fop2_date" placeholder="Число (напр. 30)" class="w-32 bg-pink-50 dark:bg-gray-700 text-sm font-medium" onchange="updateFop(2, 'date', this.value)">
+                            <input type="number" id="fop2_amount" placeholder="Сумма (₴)" class="flex-1 bg-pink-50 dark:bg-gray-700 font-bold text-rose-500" onchange="updateFop(2, 'amount', this.value)">
                         </div>
                     </div>
                 </div>
@@ -187,6 +195,7 @@
                             <button onclick="exportExcel()" class="text-xs bg-pink-50 dark:bg-gray-700 text-pink-600 dark:text-pink-300 px-2.5 py-1.5 rounded-lg font-bold hover:bg-pink-100 transition">📥 Excel</button>
                         </div>
                     </div>
+                    <!-- Список недель будет здесь -->
                     <div class="space-y-2" id="weekly-summary"></div>
                 </div>
             </div>
@@ -231,6 +240,12 @@
     </div>
 
     <script>
+        // Инициализация Supabase
+        const supabaseUrl = 'sb_publishable_Z-ZasdYDusCO-lyQUuHnWA_uW0u6c0V';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqeWlhaHV0aG9ya213bGZrb2V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5NjE4ODcsImV4cCI6MjEwMTUzNzg4N30.PqATgEdzh0iFAWNYTCobmBTz-xmPyWajs6LmA-_LXDA';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        const MY_USER_ID = 'rabstvo-main-user';
+
         const monthsConfig2026 = [
             { id: '2026-07', name: 'Июль', days: 31, startDay: 3, theme: { bg: 'from-blue-500 to-indigo-600', headerBg: 'bg-blue-100 text-blue-900', focus: '#3b82f6', thumb: '#60a5fa', divider: '#93c5fd', textHex: '#2563eb' } },
             { id: '2026-08', name: 'Август', days: 31, startDay: 6, theme: { bg: 'from-pink-500 to-rose-600', headerBg: 'bg-pink-100 text-pink-900', focus: '#ec4899', thumb: '#f472b6', divider: '#f9a8d4', textHex: '#db2777' } },
@@ -260,9 +275,16 @@
         let appData = {};
         let isDarkMode = localStorage.getItem('zpka_dark') === 'true';
         let isSecretMode = false;
-        let knownShops = JSON.parse(localStorage.getItem('ZpkaApp_Shops')) || { "уш": 13, "1": 13 };
+        let knownShops = { "уш": 13, "1": 13 };
         let salesChartInstance = null;
         let usdRate = 41.50;
+
+        // Авто-определение сегодняшнего дня
+        const todayDate = new Date();
+        const todayYyyy = todayDate.getFullYear().toString();
+        const todayMm = String(todayDate.getMonth() + 1).padStart(2, '0');
+        const todayDd = String(todayDate.getDate()).padStart(2, '0') + '.' + todayMm;
+        const autoMonthId = `${todayYyyy}-${todayMm}`;
 
         function generateEmptyDays(monthConfig) {
             let days = [];
@@ -283,12 +305,19 @@
             return days;
         }
 
-        function initApp() {
+        async function initApp() {
             if (isDarkMode) document.documentElement.classList.add('dark');
             
-            const saved = localStorage.getItem('ZpkaApp_AllData');
-            if (saved) {
-                appData = JSON.parse(saved);
+            // Загрузка с Supabase
+            const { data, error } = await supabase
+                .from('salary_records')
+                .select('data_json, shops_json')
+                .eq('user_id', MY_USER_ID)
+                .single();
+
+            if (data && data.data_json) {
+                appData = data.data_json;
+                if (data.shops_json) knownShops = data.shops_json;
             } else {
                 [...monthsConfig2026, ...monthsConfig2027].forEach(m => {
                     appData[m.id] = { days: generateEmptyDays(m), fop: { d1: '', a1: '', d2: '', a2: '' } };
@@ -304,6 +333,12 @@
                 } catch(e) {}
             }
 
+            // Устанавливаем текущий год и месяц
+            if (todayYyyy === '2026' || todayYyyy === '2027') {
+                currentYear = todayYyyy;
+                currentMonthId = autoMonthId;
+            }
+
             fetch('https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?valcode=USD&json=true')
                 .then(res => res.json())
                 .then(data => {
@@ -314,7 +349,24 @@
                     }
                 }).catch(() => {});
             
-            switchYear('2026');
+            switchYear(currentYear);
+            
+            // Скроллим к сегодняшнему дню
+            setTimeout(() => {
+                const todayRow = document.getElementById('row-today');
+                if (todayRow) todayRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 500);
+        }
+
+        async function saveApp() {
+            const { error } = await supabase
+                .from('salary_records')
+                .upsert({ 
+                    user_id: MY_USER_ID, 
+                    data_json: appData,
+                    shops_json: knownShops
+                }, { onConflict: 'user_id' });
+            if (error) console.error("Ошибка сохранения в базу:", error);
         }
 
         function switchYear(year) {
@@ -324,8 +376,13 @@
             });
             document.getElementById(`year-${year}-btn`).className = "year-btn px-4 py-1.5 rounded-lg text-sm font-bold transition-all bg-white text-pink-600 shadow-sm dark:bg-gray-600 dark:text-pink-400";
 
-            const config = year === '2026' ? monthsConfig2026 : monthsConfig2027;
-            switchMonth(config[0].id);
+            // Если переключаем на текущий год - открываем текущий месяц, иначе первый месяц года
+            if (year === todayYyyy) {
+                switchMonth(autoMonthId);
+            } else {
+                const config = year === '2026' ? monthsConfig2026 : monthsConfig2027;
+                switchMonth(config[0].id);
+            }
         }
 
         function switchMonth(monthId) {
@@ -351,14 +408,10 @@
             });
 
             const salaryTotalContainer = document.getElementById('salary-total-container');
-            if (salaryTotalContainer) {
-                salaryTotalContainer.style.color = t.textHex;
-            }
+            if (salaryTotalContainer) salaryTotalContainer.style.color = t.textHex;
 
             const wishBar = document.getElementById('wish-bar');
-            if (wishBar) {
-                wishBar.className = `h-full transition-all duration-500 bg-gradient-to-r ${t.bg}`;
-            }
+            if (wishBar) wishBar.className = `h-full transition-all duration-500 bg-gradient-to-r ${t.bg}`;
 
             document.documentElement.style.setProperty('--focus-color', t.focus);
             document.documentElement.style.setProperty('--thumb-color', t.thumb);
@@ -420,14 +473,19 @@
             });
 
             monthData.forEach((day, index) => {
+                const isToday = (day.dateStr === todayDd && currentMonthId === autoMonthId);
+                
                 const tr = document.createElement('tr');
                 tr.className = `record-row border-b border-pink-50/50 dark:border-gray-700/50 ${day.isSunday ? 'week-divider' : ''}`;
                 
+                // ПОДСВЕТКА СЕГОДНЯШНЕГО ДНЯ
+                if (isToday) {
+                    tr.id = 'row-today';
+                    tr.classList.add('today-row');
+                }
+
                 let currentSales = parseFloat(day.sales) || 0;
                 let isMax = maxSales > 0 && currentSales === maxSales && day.shop.trim() !== '';
-                if (isMax) {
-                    tr.classList.add('max-sales');
-                }
 
                 let shopVal = day.shop.trim().toLowerCase();
                 let shopClass = 'bg-mint-50 text-mint-600 border-mint-200 dark:bg-mint-900/25 dark:text-mint-300'; 
@@ -439,10 +497,12 @@
                 
                 const displaySales = isSecretMode ? (day.sales ? '***' : '') : day.sales;
                 const displaySalary = isSecretMode ? (day.salary > 0 ? '***' : '-') : (day.salary > 0 ? day.salary.toLocaleString('ru-RU') : '-');
+                
+                const crown = isMax ? '👑' : '';
 
                 tr.innerHTML = `
-                    <td class="p-2 md:p-4 text-sm font-semibold opacity-80">${day.dateStr}</td>
-                    <td class="p-2 md:p-4 text-sm font-bold opacity-60">${day.dayName} ${isMax ? '👑' : ''}</td>
+                    <td class="p-2 md:p-4 text-sm font-semibold opacity-80 ${isToday ? 'text-pink-600 dark:text-pink-400 font-black' : ''}">${day.dateStr}</td>
+                    <td class="p-2 md:p-4 text-sm font-bold opacity-60">${day.dayName} ${crown}</td>
                     <td class="p-1.5 md:p-3 text-center">
                         <input type="text" list="shop-suggestions" placeholder="Вых" onchange="updateData(${index}, 'shop', this.value)" value="${day.shop}" class="w-full text-center text-sm rounded-xl py-1.5 border transition-all ${shopClass}">
                     </td>
@@ -457,10 +517,10 @@
                 tbody.appendChild(tr);
             });
             
-            document.getElementById('fop1_date').value = fopData.d1 || '';
-            document.getElementById('fop1_amount').value = fopData.a1 || '';
-            document.getElementById('fop2_date').value = fopData.d2 || '';
-            document.getElementById('fop2_amount').value = fopData.a2 || '';
+            document.getElementById('fop1_date').value = (fopData && fopData.d1) ? fopData.d1 : '';
+            document.getElementById('fop1_amount').value = (fopData && fopData.a1) ? fopData.a1 : '';
+            document.getElementById('fop2_date').value = (fopData && fopData.d2) ? fopData.d2 : '';
+            document.getElementById('fop2_amount').value = (fopData && fopData.a2) ? fopData.a2 : '';
 
             calculateTotals();
         }
@@ -480,7 +540,6 @@
                 let lower = value.trim().toLowerCase();
                 if (lower && lower !== '1' && lower !== 'уш') {
                     knownShops[lower] = mData[index].rate;
-                    localStorage.setItem('ZpkaApp_Shops', JSON.stringify(knownShops));
                 }
             }
 
@@ -488,7 +547,6 @@
                 let lower = mData[index].shop.trim().toLowerCase();
                 if (lower !== '1' && lower !== 'уш') {
                     knownShops[lower] = mData[index].rate;
-                    localStorage.setItem('ZpkaApp_Shops', JSON.stringify(knownShops));
                 }
             }
 
@@ -514,21 +572,46 @@
             let totalDays = 0, ultraDays = 0, zamenaDays = 0, salesUsh = 0, salaryUsh = 0, salaryZamena = 0;
             let weekly = {};
 
+            // Считаем ЗП и инициализируем все недели
             mData.forEach(day => {
+                if (!weekly[day.weekId]) weekly[day.weekId] = { days: 0, salary: 0, name: `Неделя ${day.weekId}` };
+                
                 let shopVal = day.shop.trim().toLowerCase();
                 let s = parseFloat(day.sales) || 0;
+                
                 if(shopVal !== '') {
                     totalDays++;
                     if(shopVal === '1' || shopVal === 'уш') { ultraDays++; salesUsh += s; salaryUsh += day.salary; }
                     else { zamenaDays++; salaryZamena += day.salary; }
-                    if (!weekly[day.weekId]) weekly[day.weekId] = { days: 0, salary: 0, name: `Неделя ${day.weekId}` };
+                    
                     weekly[day.weekId].days++;
-                    weekly[day.weekId].salary += day.salary;
+                    weekly[day.weekId].salary += day.salary; // Плюсуем заработанное
                 }
             });
 
-            let fopTotal = (parseFloat(fData.a1) || 0) + (parseFloat(fData.a2) || 0);
-            let grandTotal = salaryUsh + salaryZamena + fopTotal;
+            let f1Amount = parseFloat(fData.a1) || 0;
+            let f2Amount = parseFloat(fData.a2) || 0;
+
+            function applyFopToWeek(dateStr, amount) {
+                if (!dateStr || !amount) return;
+                let str = String(dateStr).trim();
+                let dayNum = parseInt(str.split('.')[0]); // Достает '15' из '15.08' или '15'
+                let dayObj = mData.find(d => d.dayNum === dayNum);
+                
+                if (dayObj && weekly[dayObj.weekId]) {
+                    weekly[dayObj.weekId].salary -= amount; // Вычитаем ФОП из этой недели
+                }
+            }
+
+            applyFopToWeek(fData.d1, f1Amount);
+            applyFopToWeek(fData.d2, f2Amount);
+
+            let fopTotal = f1Amount + f2Amount;
+            
+            // ГРАНД ТОТАЛ: заработано всего - сколько уже скинули авансом (ФОП)
+            let grandTotal = salaryUsh + salaryZamena - fopTotal; 
+            
+            // Средняя за смену (считаем грязными до вычета фопа, чтобы цифра была честной)
             let avgShift = totalDays > 0 ? Math.round((salaryUsh + salaryZamena) / totalDays) : 0;
 
             document.getElementById('total-days').innerText = totalDays;
@@ -536,50 +619,37 @@
             document.getElementById('total-zamena').innerText = zamenaDays;
             document.getElementById('total-sales-ush').innerText = isSecretMode ? '***' : salesUsh.toLocaleString('ru-RU');
             document.getElementById('avg-per-shift').innerText = isSecretMode ? '***' : avgShift.toLocaleString('ru-RU');
+            
+            // Отображаем ФОП как отнятую сумму
             document.getElementById('total-fop').innerText = isSecretMode ? '***' : fopTotal.toLocaleString('ru-RU');
+            
+            // Остаток к выплате (с учетом минуса)
             document.getElementById('salary-total').innerText = isSecretMode ? '***' : grandTotal.toLocaleString('ru-RU');
             document.getElementById('salary-usd').innerText = Math.round(grandTotal / usdRate).toLocaleString('ru-RU');
             document.getElementById('usd-rate').innerText = usdRate.toFixed(2);
 
-            const diffEl = document.getElementById('salary-diff');
-            let prevMonthId = getPreviousMonthId(currentMonthId);
-            if (prevMonthId && appData[prevMonthId]) {
-                let prevTotal = calcMonthTotal(prevMonthId);
-                let diff = grandTotal - prevTotal;
-                if (prevTotal > 0 && grandTotal > 0) {
-                    diffEl.innerText = (diff >= 0 ? '+' : '') + diff.toLocaleString('ru-RU') + ' ₴';
-                    diffEl.className = `text-xs font-black px-2 py-0.5 rounded-full ${diff >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`;
-                    diffEl.style.display = isSecretMode ? 'none' : 'inline-block';
-                } else {
-                    diffEl.style.display = 'none';
-                }
-            } else {
-                diffEl.style.display = 'none';
-            }
-
+            // Отрисовка недельного отчета
             const weekCont = document.getElementById('weekly-summary');
             weekCont.innerHTML = '';
+            
             Object.values(weekly).forEach(w => {
-                if(w.days > 0) {
+                if(w.days > 0 || w.salary !== 0) {
+                    let isNegative = w.salary < 0;
                     weekCont.innerHTML += `
-                        <div class="bg-pink-50 dark:bg-gray-700/50 p-3 rounded-xl flex justify-between items-center">
-                            <div><p class="text-sm font-bold">${w.name}</p><p class="text-[11px] opacity-80">Дней: ${w.days}</p></div>
-                            <div class="text-lg font-black">${isSecretMode ? '***' : w.salary.toLocaleString('ru-RU')} ₴</div>
+                        <div class="bg-pink-50 dark:bg-gray-700/50 p-3 rounded-xl flex justify-between items-center ${isNegative ? 'border border-rose-200' : ''}">
+                            <div>
+                                <p class="text-sm font-bold">${w.name}</p>
+                                <p class="text-[11px] opacity-80">Смен отработано: ${w.days}</p>
+                            </div>
+                            <div class="text-lg font-black ${isNegative ? 'text-rose-500' : ''}">
+                                ${isSecretMode ? '***' : w.salary.toLocaleString('ru-RU')} ₴
+                            </div>
                         </div>`;
                 }
             });
-            if(weekCont.innerHTML === '') weekCont.innerHTML = `<p class="text-xs text-center py-2 opacity-60">Рабочих дней нет</p>`;
+            if(weekCont.innerHTML === '') weekCont.innerHTML = `<p class="text-xs text-center py-2 opacity-60">Пока пусто</p>`;
 
-            calculateWishlist(grandTotal, avgShift);
-        }
-
-        function calcMonthTotal(mId) {
-            let m = appData[mId];
-            if (!m) return 0;
-            let sum = 0;
-            m.days.forEach(d => sum += d.salary);
-            sum += (parseFloat(m.fop.a1) || 0) + (parseFloat(m.fop.a2) || 0);
-            return sum;
+            calculateWishlist(salaryUsh + salaryZamena, avgShift); // Цель считаем от всей заработанной суммы
         }
 
         function getPreviousMonthId(mId) {
@@ -588,16 +658,15 @@
             return idx > 0 ? allIds[idx - 1] : null;
         }
 
-        function calculateWishlist(currentTotal, avgShift) {
-            let name = document.getElementById('wish-name').value;
+        function calculateWishlist(totalEarned, avgShift) {
             let price = parseFloat(document.getElementById('wish-price').value) || 0;
             
-            let percent = price > 0 ? Math.min(100, Math.round((currentTotal / price) * 100)) : 0;
+            let percent = price > 0 ? Math.min(100, Math.round((totalEarned / price) * 100)) : 0;
             document.getElementById('wish-bar').style.width = percent + '%';
             document.getElementById('wish-progress-text').innerText = `${percent}% накопилось`;
 
             if (price > 0 && avgShift > 0) {
-                let left = Math.max(0, price - currentTotal);
+                let left = Math.max(0, price - totalEarned);
                 let daysNeeded = Math.ceil(left / avgShift);
                 document.getElementById('wish-days-left').innerText = left > 0 ? `еще ~${daysNeeded} смен 💀` : 'Цель достигнута! 🎉';
             } else {
@@ -611,8 +680,6 @@
             localStorage.setItem('ZpkaApp_Wish', JSON.stringify({ name, price }));
             calculateTotals();
         }
-
-        function saveApp() { localStorage.setItem('ZpkaApp_AllData', JSON.stringify(appData)); }
         
         function toggleDarkMode() {
             isDarkMode = !isDarkMode;
@@ -673,29 +740,28 @@
             const container = document.getElementById('yearly-summary-content');
             
             let totalYearDays = 0;
-            let totalYearSalary = 0;
+            let totalYearEarned = 0; // Чисто сколько заработала
             let bestDay = { date: '-', sales: 0, salary: 0, month: '' };
             let monthTotals = [];
 
             let configs = currentYear === '2026' ? monthsConfig2026 : monthsConfig2027;
             configs.forEach(m => {
                 let mData = appData[m.id];
-                let mSalary = 0;
+                let mEarned = 0;
                 if(mData) {
                     mData.days.forEach(d => {
                         if(d.shop.trim() !== '') {
                             totalYearDays++;
-                            mSalary += d.salary;
+                            mEarned += d.salary;
                             let s = parseFloat(d.sales) || 0;
                             if(s > bestDay.sales) {
                                 bestDay = { date: d.dateStr, sales: s, salary: d.salary, month: m.name };
                             }
                         }
                     });
-                    mSalary += (parseFloat(mData.fop.a1) || 0) + (parseFloat(mData.fop.a2) || 0);
                 }
-                totalYearSalary += mSalary;
-                monthTotals.push({ name: m.name, salary: mSalary });
+                totalYearEarned += mEarned;
+                monthTotals.push({ name: m.name, salary: mEarned });
             });
 
             let bestMonth = monthTotals.reduce((max, cur) => cur.salary > max.salary ? cur : max, monthTotals[0]);
@@ -703,7 +769,7 @@
             container.innerHTML = `
                 <div class="bg-pink-50 dark:bg-gray-700/50 p-4 rounded-2xl space-y-2">
                     <p class="font-bold text-lg">🔥 Всего отработано дней: <span class="text-pink-600">${totalYearDays}</span></p>
-                    <p class="font-bold text-lg">💰 Общая ЗП за год: <span class="text-pink-600">${totalYearSalary.toLocaleString('ru-RU')} ₴</span></p>
+                    <p class="font-bold text-lg">💰 Общая ЗП за год: <span class="text-pink-600">${totalYearEarned.toLocaleString('ru-RU')} ₴</span></p>
                     <p class="font-bold">🏆 Самый жирный месяц: <span class="text-pink-600">${bestMonth.name} (${bestMonth.salary.toLocaleString('ru-RU')} ₴)</span></p>
                     <p class="font-bold">⭐ Рекордный день: <span class="text-pink-600">${bestDay.date} (${bestDay.month}) — Касса: ${bestDay.sales.toLocaleString('ru-RU')} ₴ (ЗП: ${bestDay.salary} ₴)</span></p>
                 </div>
@@ -769,172 +835,5 @@ if ("serviceWorker" in navigator) {
   });
 }
 </script>
-    <!-- Подключаем Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        // Инициализация Supabase
-        const supabaseUrl = 'sb_publishable_Z-ZasdYDusCO-lyQUuHnWA_uW0u6c0V';
-        const supabaseKey = 'sb_secret_tJSrZdApEOAdYcx4b3LBrA_YIhyrgTf';
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-        
-        // Уникальный ID для твоей таблицы (можно потом привязать к логину)
-        const MY_USER_ID = 'rabstvo-main-user';
-
-        // Конфиги месяцев (оставила твои без изменений)
-        const monthsConfig2026 = [
-            { id: '2026-07', name: 'Июль', days: 31, startDay: 3, theme: { bg: 'from-blue-500 to-indigo-600', headerBg: 'bg-blue-100 text-blue-900', focus: '#3b82f6', thumb: '#60a5fa', divider: '#93c5fd', textHex: '#2563eb' } },
-            { id: '2026-08', name: 'Август', days: 31, startDay: 6, theme: { bg: 'from-pink-500 to-rose-600', headerBg: 'bg-pink-100 text-pink-900', focus: '#ec4899', thumb: '#f472b6', divider: '#f9a8d4', textHex: '#db2777' } },
-            /* ... остальные месяцы 2026 ... */
-        ];
-
-        const monthsConfig2027 = [
-            /* ... твои месяцы 2027 ... */
-        ];
-
-        let currentYear = '2026';
-        let currentMonthId = '2026-07';
-        let appData = {};
-        let isDarkMode = localStorage.getItem('zpka_dark') === 'true';
-        let isSecretMode = false;
-        let knownShops = { "уш": 13, "1": 13 };
-        let salesChartInstance = null;
-        let usdRate = 41.50;
-
-        // Автоматическое определение текущей даты
-        const todayDate = new Date();
-        const todayYyyy = todayDate.getFullYear().toString();
-        const todayMm = String(todayDate.getMonth() + 1).padStart(2, '0');
-        const todayDd = String(todayDate.getDate()).padStart(2, '0') + '.' + todayMm;
-        const autoMonthId = `${todayYyyy}-${todayMm}`;
-
-        function generateEmptyDays(monthConfig) {
-            let days = [];
-            let [y, m] = monthConfig.id.split('-');
-            for (let i = 1; i <= monthConfig.days; i++) {
-                let date = new Date(parseInt(y), parseInt(m) - 1, i);
-                let dayName = date.toLocaleDateString('ru-RU', { weekday: 'short' });
-                let weekNum = Math.ceil((i + monthConfig.startDay - 1) / 7);
-                
-                days.push({
-                    dayNum: i,
-                    dateStr: `${String(i).padStart(2, '0')}.${m}`,
-                    dayName: dayName.charAt(0).toUpperCase() + dayName.slice(1),
-                    shop: '', rate: 13, sales: '', salary: 0,
-                    isSunday: date.getDay() === 0, weekId: weekNum
-                });
-            }
-            return days;
-        }
-
-        async function initApp() {
-            if (isDarkMode) document.documentElement.classList.add('dark');
-            
-            // Пытаемся загрузить данные с сервера Supabase
-            const { data, error } = await supabase
-                .from('app_data')
-                .select('data_json, shops_json')
-                .eq('user_id', MY_USER_ID)
-                .single();
-
-            if (data && data.data_json) {
-                appData = data.data_json;
-                if (data.shops_json) knownShops = data.shops_json;
-            } else {
-                // Если пусто, генерируем заново
-                [...monthsConfig2026, ...monthsConfig2027].forEach(m => {
-                    appData[m.id] = { days: generateEmptyDays(m), fop: { d1: '', a1: '', d2: '', a2: '' } };
-                });
-            }
-
-            // Устанавливаем текущий год и месяц автоматически
-            if (todayYyyy === '2026' || todayYyyy === '2027') {
-                currentYear = todayYyyy;
-                currentMonthId = autoMonthId;
-            }
-
-            fetch('https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?valcode=USD&json=true')
-                .then(res => res.json())
-                .then(data => {
-                    if (data && data[0] && data[0].rate) {
-                        usdRate = data[0].rate;
-                        document.getElementById('usd-rate').innerText = usdRate.toFixed(2);
-                        calculateTotals();
-                    }
-                }).catch(() => {});
-            
-            switchYear(currentYear);
-            
-            // Скроллим к сегодняшнему дню
-            setTimeout(() => {
-                const todayRow = document.getElementById('row-today');
-                if (todayRow) todayRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 500);
-        }
-
-        async function saveApp() {
-            // Отправляем данные на общий сервер
-            const { error } = await supabase
-                .from('app_data')
-                .upsert({ 
-                    user_id: MY_USER_ID, 
-                    data_json: appData,
-                    shops_json: knownShops
-                }, { onConflict: 'user_id' });
-            
-            if (error) console.error("Ошибка сохранения в базу:", error);
-        }
-
-        // --- В renderTable() добавлена подсветка текущего дня ---
-        function renderTable() {
-            // ... (твое начало функции updateShopDatalist и tbody.innerHTML = '') ...
-            
-            const tbody = document.getElementById('table-body');
-            tbody.innerHTML = '';
-            
-            if (!appData[currentMonthId]) {
-                const config = [...monthsConfig2026, ...monthsConfig2027].find(m => m.id === currentMonthId);
-                appData[currentMonthId] = { days: generateEmptyDays(config), fop: { d1: '', a1: '', d2: '', a2: '' } };
-            }
-
-            const monthData = appData[currentMonthId].days;
-            let maxSales = 0; // ... расчет maxSales ...
-
-            monthData.forEach((day, index) => {
-                // Проверяем, сегодняшний ли это день
-                const isToday = (day.dateStr === todayDd && currentMonthId === autoMonthId);
-                
-                const tr = document.createElement('tr');
-                tr.className = `record-row border-b border-pink-50/50 dark:border-gray-700/50 ${day.isSunday ? 'week-divider' : ''}`;
-                
-                // Подсветка строки и добавление ID для скролла
-                if (isToday) {
-                    tr.id = 'row-today';
-                    tr.classList.add('bg-pink-50', 'dark:bg-pink-900/20', 'border-l-4', 'border-l-pink-500');
-                }
-
-                let currentSales = parseFloat(day.sales) || 0;
-                let isMax = maxSales > 0 && currentSales === maxSales && day.shop.trim() !== '';
-                if (isMax) tr.classList.add('max-sales');
-
-                let shopClass = /* ... твоя логика цветов shopClass ... */;
-                const displaySales = isSecretMode ? (day.sales ? '***' : '') : day.sales;
-                const displaySalary = isSecretMode ? (day.salary > 0 ? '***' : '-') : (day.salary > 0 ? day.salary.toLocaleString('ru-RU') : '-');
-
-                // Добавляем красивую плашку "Сегодня" 
-                const todayBadge = isToday ? `<span class="ml-1 inline-flex items-center rounded-md bg-pink-500 px-1.5 py-0.5 text-[10px] font-black text-white shadow-sm ring-1 ring-inset ring-pink-500/10">сегодня</span>` : '';
-
-                tr.innerHTML = `
-                    <td class="p-2 md:p-4 text-sm font-semibold opacity-80 ${isToday ? 'text-pink-600 dark:text-pink-400' : ''}">${day.dateStr}</td>
-                    <td class="p-2 md:p-4 text-sm font-bold opacity-60">${day.dayName} ${isMax ? '👑' : ''} ${todayBadge}</td>
-                    <!-- ... твои инпуты ... -->
-                `;
-                tbody.appendChild(tr);
-            });
-            
-            // ... (обновление данных ФОП и calculateTotals) ...
-        }
-
-        // Остальные функции (switchYear, updateData, calculateTotals, etc.) остаются почти без изменений, 
-        // главное, чтобы везде вызывался обновленный saveApp() вместо localStorage.
 </body>
 </html>
