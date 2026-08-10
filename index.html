@@ -243,7 +243,7 @@
         // Инициализация Supabase
         const supabaseUrl = 'sb_publishable_Z-ZasdYDusCO-lyQUuHnWA_uW0u6c0V';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqeWlhaHV0aG9ya213bGZrb2V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5NjE4ODcsImV4cCI6MjEwMTUzNzg4N30.PqATgEdzh0iFAWNYTCobmBTz-xmPyWajs6LmA-_LXDA';
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        const db = window.supabase.createClient(supabaseUrl, supabaseKey);
         const MY_USER_ID = 'rabstvo-main-user';
 
         const monthsConfig2026 = [
@@ -309,7 +309,7 @@
             if (isDarkMode) document.documentElement.classList.add('dark');
             
             // Загрузка с Supabase
-            const { data, error } = await supabase
+            const { data, error } = await db
                 .from('salary_records')
                 .select('data_json, shops_json')
                 .eq('user_id', MY_USER_ID)
@@ -359,7 +359,7 @@
         }
 
         async function saveApp() {
-            const { error } = await supabase
+            const { error } = await db
                 .from('salary_records')
                 .upsert({ 
                     user_id: MY_USER_ID, 
