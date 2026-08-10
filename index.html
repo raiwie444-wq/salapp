@@ -359,18 +359,33 @@
         }
 
         async function saveApp() {
-            // Простейший insert/upsert без жесткой привязки к уникальным индексам базы
-            const { error } = await db
+            // Сначала проверяем, есть ли уже строка для нашего юзера в базе
+            const { data: existing } = await db
                 .from('salary_records')
-                .upsert([
-                    { user_id: MY_USER_ID, data_json: appData, shops_json: knownShops }
-                ], { onConflict: 'user_id' });
-                
+                .select('id')
+                .eq('user_id', MY_USER_ID)
+                .maybeSingle();
+
+            let error;
+            if (existing) {
+                // Если запись уже есть — просто обновляем её
+                const res = await db
+                    .from('salary_records')
+                    .update({ data_json: appData, shops_json: knownShops })
+                    .eq('user_id', MY_USER_ID);
+                error = res.error;
+            } else {
+                // Если записи еще нет — создаем новую с нуля
+                const res = await db
+                    .from('salary_records')
+                    .insert([{ user_id: MY_USER_ID, data_json: appData, shops_json: knownShops }]);
+                error = res.error;
+            }
+
             if (error) {
-                console.error("Ошибка сохранения:", error.message);
+                console.error("Ошибка сохранения в базу:", error);
             }
         }
-            }
     
 
         function switchYear(year) {
