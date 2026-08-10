@@ -138,7 +138,7 @@
                         <div class="pt-2 space-y-3">
                             <div class="bg-white text-gray-800 p-4 rounded-2xl shadow-inner mt-2 relative">
                                 <div class="flex justify-between items-center mb-1">
-                                    <span class="block text-xs font-black uppercase tracking-wider opacity-70">ОСТАЛОСЬ ПОЛУЧИТЬ:</span>
+                                    <span class="block text-xs font-black uppercase tracking-wider opacity-70">ИТОГО:</span>
                                     <span id="salary-diff" class="text-xs font-black px-2 py-0.5 rounded-full"></span>
                                 </div>
                                 <div class="flex items-baseline gap-3">
@@ -177,11 +177,11 @@
                     <h3 class="text-lg font-bold text-pink-800 dark:text-pink-300 mb-3">💸 Авансы (ФОП)</h3>
                     <div class="space-y-3">
                         <div class="flex gap-2">
-                            <input type="text" id="fop1_date" placeholder="Число (напр. 15)" class="w-32 bg-pink-50 dark:bg-gray-700 text-sm font-medium" onchange="updateFop(1, 'date', this.value)">
+                            <input type="text" id="fop1_date" placeholder="Дата 1" class="w-32 bg-pink-50 dark:bg-gray-700 text-sm font-medium" onchange="updateFop(1, 'date', this.value)">
                             <input type="number" id="fop1_amount" placeholder="Сумма (₴)" class="flex-1 bg-pink-50 dark:bg-gray-700 font-bold text-rose-500" onchange="updateFop(1, 'amount', this.value)">
                         </div>
                         <div class="flex gap-2">
-                            <input type="text" id="fop2_date" placeholder="Число (напр. 30)" class="w-32 bg-pink-50 dark:bg-gray-700 text-sm font-medium" onchange="updateFop(2, 'date', this.value)">
+                            <input type="text" id="fop2_date" placeholder="Дата 2" class="w-32 bg-pink-50 dark:bg-gray-700 text-sm font-medium" onchange="updateFop(2, 'date', this.value)">
                             <input type="number" id="fop2_amount" placeholder="Сумма (₴)" class="flex-1 bg-pink-50 dark:bg-gray-700 font-bold text-rose-500" onchange="updateFop(2, 'amount', this.value)">
                         </div>
                     </div>
@@ -770,7 +770,7 @@
                 <div class="bg-pink-50 dark:bg-gray-700/50 p-4 rounded-2xl space-y-2">
                     <p class="font-bold text-lg">🔥 Всего отработано дней: <span class="text-pink-600">${totalYearDays}</span></p>
                     <p class="font-bold text-lg">💰 Общая ЗП за год: <span class="text-pink-600">${totalYearEarned.toLocaleString('ru-RU')} ₴</span></p>
-                    <p class="font-bold">🏆 Самый жирный месяц: <span class="text-pink-600">${bestMonth.name} (${bestMonth.salary.toLocaleString('ru-RU')} ₴)</span></p>
+                    <p class="font-bold">🏆 Самый лучший месяц: <span class="text-pink-600">${bestMonth.name} (${bestMonth.salary.toLocaleString('ru-RU')} ₴)</span></p>
                     <p class="font-bold">⭐ Рекордный день: <span class="text-pink-600">${bestDay.date} (${bestDay.month}) — Касса: ${bestDay.sales.toLocaleString('ru-RU')} ₴ (ЗП: ${bestDay.salary} ₴)</span></p>
                 </div>
             `;
