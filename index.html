@@ -269,12 +269,14 @@
             const u = document.getElementById('login-username').value.trim();
             const p = document.getElementById('login-password').value.trim();
             if(!u || !p) return alert('Введи логин и пароль!');
+            
             currentUser = 'user_' + btoa(u + ':' + p);
             localStorage.setItem('zpka_user', currentUser);
+            localStorage.setItem('zpka_raw_user', u); // Запоминаем логин для значка
+            
             document.getElementById('login-screen').style.display = 'none';
-            initApp();
+            initApp(); // Загружаем данные
         }
-
         function logout() {
             if(confirm('Точно выйти из аккаунта?')) {
                 localStorage.removeItem('zpka_user');
@@ -347,6 +349,10 @@
             }
 
             if (isDarkMode) document.documentElement.classList.add('dark');
+            // Показываем логин при наведении на человечка
+            const savedName = localStorage.getItem('zpka_raw_user') || 'Твой аккаунт';
+            const tooltip = document.getElementById('user-tooltip');
+            if (tooltip) tooltip.innerText = 'Привет, ' + savedName + '!';
             
             const { data, error } = await db
                 .from('salary_records')
