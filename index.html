@@ -60,6 +60,15 @@
     </style>
 </head>
 <body class="p-4 md:p-8 min-h-screen">
+    <!-- Окно входа -->
+    <div id="login-screen" class="fixed inset-0 bg-pink-50 dark:bg-gray-900 z-[100] flex items-center justify-center p-4" style="display: none;">
+        <div class="bg-white dark:bg-gray-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-pink-100 dark:border-gray-700 text-center">
+            <h2 class="text-3xl font-black text-pink-600 dark:text-pink-400 mb-6">Вход в ЗПку</h2>
+            <input type="text" id="login-username" placeholder="Придумай логин" class="w-full bg-pink-50 dark:bg-gray-700 text-lg py-3 px-4 rounded-xl mb-4 font-bold outline-none border-2 border-transparent focus:border-pink-400 text-gray-800 dark:text-white">
+            <input type="password" id="login-password" placeholder="Придумай пароль" class="w-full bg-pink-50 dark:bg-gray-700 text-lg py-3 px-4 rounded-xl mb-6 font-bold outline-none border-2 border-transparent focus:border-pink-400 text-gray-800 dark:text-white" onkeypress="if(event.key === 'Enter') doLogin()">
+            <button onclick="doLogin()" class="w-full py-3 bg-pink-500 text-white font-black text-lg rounded-xl shadow-lg hover:bg-pink-600 transition">Войти</button>
+        </div>
+    </div>
     <div class="max-w-7xl mx-auto">
         <header class="mb-6 flex flex-col md:flex-row justify-between items-end gap-4">
             <div class="flex items-center gap-4 flex-wrap">
@@ -76,6 +85,7 @@
                     <button onclick="toggleDarkMode()" class="p-2 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-pink-100 dark:border-gray-700 text-base transition hover:scale-105">🌙</button>
                     <button onclick="toggleSecretMode()" id="btn-secret-mode" class="p-2 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-pink-100 dark:border-gray-700 text-base transition hover:scale-105" title="Режим анти-палево">👁️</button>
                     <button onclick="openBackupModal()" class="p-2 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-pink-100 dark:border-gray-700 text-base transition hover:scale-105" title="Резервная копия">⚙️</button>
+                    <button onclick="logout()" class="p-2 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-pink-100 dark:border-gray-700 text-base transition hover:scale-105" title="Выйти">🚪</button>
                 </div>
             </div>
             <button onclick="resetCurrentMonth()" class="text-xs bg-white dark:bg-gray-800 text-pink-400 hover:text-pink-600 px-3.5 py-2 rounded-xl font-bold transition shadow-sm border border-pink-100 dark:border-gray-700">
@@ -244,7 +254,27 @@
         const supabaseUrl = 'https://sjyiahuthorkmwlfkoex.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqeWlhaHV0aG9ya213bGZrb2V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5NjE4ODcsImV4cCI6MjEwMTUzNzg4N30.PqATgEdzh0iFAWNYTCobmBTz-xmPyWajs6LmA-_LXDA';
         const db = window.supabase.createClient(supabaseUrl, supabaseKey);
-        const MY_USER_ID = 'rabstvo-main-user';
+        let currentUser = localStorage.getItem('zpka_user') || null;
+
+        function doLogin() {
+            const u = document.getElementById('login-username').value.trim();
+            const p = document.getElementById('login-password').value.trim();
+            if(!u || !p) return alert('Введи логин и пароль!');
+            
+            // Создаем уникальный шифр из логина и пароля
+            currentUser = 'user_' + btoa(u + ':' + p);
+            localStorage.setItem('zpka_user', currentUser);
+            
+            document.getElementById('login-screen').style.display = 'none';
+            initApp(); // Загружаем данные
+        }
+
+        function logout() {
+            if(confirm('Точно выйти из аккаунта?')) {
+                localStorage.removeItem('zpka_user');
+                location.reload();
+            }
+        };
 
         const monthsConfig2026 = [
             { id: '2026-07', name: 'Июль', days: 31, startDay: 3, theme: { bg: 'from-blue-500 to-indigo-600', headerBg: 'bg-blue-100 text-blue-900', focus: '#3b82f6', thumb: '#60a5fa', divider: '#93c5fd', textHex: '#2563eb' } },
@@ -306,13 +336,17 @@
         }
 
         async function initApp() {
+            if (!currentUser) {
+                document.getElementById('login-screen').style.display = 'flex';
+                return; // Ждем пока не войдут в аккаунт
+            }
+
             if (isDarkMode) document.documentElement.classList.add('dark');
             
-            // Загрузка с Supabase
             const { data, error } = await db
                 .from('salary_records')
                 .select('data_json, shops_json')
-                .eq('user_id', MY_USER_ID)
+                .eq('user_id', currentUser)
                 .single();
 
             if (data && data.data_json) {
@@ -333,7 +367,6 @@
                 } catch(e) {}
             }
 
-            // Устанавливаем текущий год и месяц
             if (todayYyyy === '2026' || todayYyyy === '2027') {
                 currentYear = todayYyyy;
                 currentMonthId = autoMonthId;
@@ -351,7 +384,6 @@
             
             switchYear(currentYear);
             
-            // Скроллим к сегодняшнему дню
             setTimeout(() => {
                 const todayRow = document.getElementById('row-today');
                 if (todayRow) todayRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -359,32 +391,27 @@
         }
 
         async function saveApp() {
-            // Сначала проверяем, есть ли уже строка для нашего юзера в базе
+            if (!currentUser) return; // Защита от сохранения в пустоту
+
             const { data: existing } = await db
                 .from('salary_records')
                 .select('id')
-                .eq('user_id', MY_USER_ID)
+                .eq('user_id', currentUser)
                 .maybeSingle();
 
             let error;
             if (existing) {
-                // Если запись уже есть — просто обновляем её
-                const res = await db
-                    .from('salary_records')
+                const res = await db.from('salary_records')
                     .update({ data_json: appData, shops_json: knownShops })
-                    .eq('user_id', MY_USER_ID);
+                    .eq('user_id', currentUser);
                 error = res.error;
             } else {
-                // Если записи еще нет — создаем новую с нуля
-                const res = await db
-                    .from('salary_records')
-                    .insert([{ user_id: MY_USER_ID, data_json: appData, shops_json: knownShops }]);
+                const res = await db.from('salary_records')
+                    .insert([{ user_id: currentUser, data_json: appData, shops_json: knownShops }]);
                 error = res.error;
             }
 
-            if (error) {
-                console.error("Ошибка сохранения в базу:", error);
-            }
+            if (error) console.error("Ошибка сохранения в базу:", error);
         }
     
 
@@ -557,21 +584,14 @@
 
             if (field === 'shop') {
                 let lower = value.trim().toLowerCase();
-                if (lower && lower !== '1' && lower !== 'уш') {
-                    knownShops[lower] = mData[index].rate;
-                }
-            }
-
-            if (field === 'rate' && mData[index].shop.trim() !== '') {
-                let lower = mData[index].shop.trim().toLowerCase();
-                if (lower !== '1' && lower !== 'уш') {
-                    knownShops[lower] = mData[index].rate;
-                }
+                if (lower && lower !== '1' && lower !== 'уш') knownShops[lower] = mData[index].rate;
             }
 
             let rate = mData[index].rate || 0;
             let sales = mData[index].sales || 0;
-            mData[index].salary = mData[index].shop.trim() !== '' ? Math.round(sales * (rate / 100)) : 0;
+            
+            // ФИКС ОТЛОЖЕК: Считаем ЗП, если указан магазин ИЛИ есть продажи
+            mData[index].salary = (mData[index].shop.trim() !== '' || sales > 0) ? Math.round(sales * (rate / 100)) : 0;
             
             saveApp();
             renderTable();
@@ -587,25 +607,56 @@
         function calculateTotals() {
             const mData = appData[currentMonthId].days;
             const fData = appData[currentMonthId].fop;
-            
+
             let totalDays = 0, ultraDays = 0, zamenaDays = 0, salesUsh = 0, salaryUsh = 0, salaryZamena = 0;
             let weekly = {};
+            let [currY, currM] = currentMonthId.split('-');
 
-            // Считаем ЗП и инициализируем все недели
             mData.forEach(day => {
-                if (!weekly[day.weekId]) weekly[day.weekId] = { days: 0, salary: 0, name: `Неделя ${day.weekId}` };
-                
-                let shopVal = day.shop.trim().toLowerCase();
-                let s = parseFloat(day.sales) || 0;
-                
-                if(shopVal !== '') {
-                    totalDays++;
-                    if(shopVal === '1' || shopVal === 'уш') { ultraDays++; salesUsh += s; salaryUsh += day.salary; }
-                    else { zamenaDays++; salaryZamena += day.salary; }
-                    
-                    weekly[day.weekId].days++;
-                    weekly[day.weekId].salary += day.salary; // Плюсуем заработанное
+                let date = new Date(parseInt(currY), parseInt(currM) - 1, day.dayNum);
+                let dayOfWeek = date.getDay() || 7; 
+                let monday = new Date(date);
+                monday.setDate(date.getDate() - dayOfWeek + 1);
+                let sunday = new Date(monday);
+                sunday.setDate(monday.getDate() + 6);
+
+                let weekKey = monday.getTime();
+
+                if (!weekly[weekKey]) {
+                    let mStr = String(monday.getDate()).padStart(2, '0') + '.' + String(monday.getMonth() + 1).padStart(2, '0');
+                    let sStr = String(sunday.getDate()).padStart(2, '0') + '.' + String(sunday.getMonth() + 1).padStart(2, '0');
+                    weekly[weekKey] = { days: 0, salary: 0, name: `Неделя ${day.weekId} (${mStr} - ${sStr})`, monday: monday, sunday: sunday };
                 }
+            });
+
+            Object.keys(appData).forEach(mId => {
+                let [y, m] = mId.split('-');
+                appData[mId].days.forEach(day => {
+                    let shopVal = day.shop.trim().toLowerCase();
+                    let s = parseFloat(day.sales) || 0;
+                    let date = new Date(parseInt(y), parseInt(m) - 1, day.dayNum);
+                    let t = date.getTime();
+
+                    let matchedWeekKey = Object.keys(weekly).find(key => t >= weekly[key].monday.getTime() && t <= weekly[key].sunday.getTime());
+                    
+                    // Если была реальная смена ИЛИ пробита отложка
+                    if (matchedWeekKey && (shopVal !== '' || s > 0)) {
+                        if (shopVal !== '') weekly[matchedWeekKey].days++; // Дни плюсуем только за реальный выход
+                        weekly[matchedWeekKey].salary += day.salary;
+                    }
+
+                    if (mId === currentMonthId && (shopVal !== '' || s > 0)) {
+                        if (shopVal !== '') {
+                            totalDays++;
+                            if (shopVal === '1' || shopVal === 'уш') { ultraDays++; salesUsh += s; salaryUsh += day.salary; }
+                            else { zamenaDays++; salaryZamena += day.salary; }
+                        } else if (s > 0) {
+                            // Отложка в выходной! Касса и ЗП идут в основной котел, но смен больше не становится
+                            salesUsh += s;
+                            salaryUsh += day.salary;
+                        }
+                    }
+                });
             });
 
             let f1Amount = parseFloat(fData.a1) || 0;
@@ -613,12 +664,15 @@
 
             function applyFopToWeek(dateStr, amount) {
                 if (!dateStr || !amount) return;
-                let str = String(dateStr).trim();
-                let dayNum = parseInt(str.split('.')[0]); // Достает '15' из '15.08' или '15'
+                let dayNum = parseInt(String(dateStr).trim().split('.')[0]);
                 let dayObj = mData.find(d => d.dayNum === dayNum);
-                
-                if (dayObj && weekly[dayObj.weekId]) {
-                    weekly[dayObj.weekId].salary -= amount; // Вычитаем ФОП из этой недели
+                if (dayObj) {
+                    let dDate = new Date(parseInt(currY), parseInt(currM) - 1, dayObj.dayNum);
+                    let dow = dDate.getDay() || 7;
+                    let mon = new Date(dDate);
+                    mon.setDate(dDate.getDate() - dow + 1);
+                    let weekKey = mon.getTime();
+                    if (weekly[weekKey]) weekly[weekKey].salary -= amount;
                 }
             }
 
@@ -626,11 +680,7 @@
             applyFopToWeek(fData.d2, f2Amount);
 
             let fopTotal = f1Amount + f2Amount;
-            
-            // ГРАНД ТОТАЛ: заработано всего - сколько уже скинули авансом (ФОП)
-            let grandTotal = salaryUsh + salaryZamena - fopTotal; 
-            
-            // Средняя за смену (считаем грязными до вычета фопа, чтобы цифра была честной)
+            let grandTotal = salaryUsh + salaryZamena - fopTotal;
             let avgShift = totalDays > 0 ? Math.round((salaryUsh + salaryZamena) / totalDays) : 0;
 
             document.getElementById('total-days').innerText = totalDays;
@@ -638,36 +688,35 @@
             document.getElementById('total-zamena').innerText = zamenaDays;
             document.getElementById('total-sales-ush').innerText = isSecretMode ? '***' : salesUsh.toLocaleString('ru-RU');
             document.getElementById('avg-per-shift').innerText = isSecretMode ? '***' : avgShift.toLocaleString('ru-RU');
-            
-            // Отображаем ФОП как отнятую сумму
             document.getElementById('total-fop').innerText = isSecretMode ? '***' : fopTotal.toLocaleString('ru-RU');
-            
-            // Остаток к выплате (с учетом минуса)
             document.getElementById('salary-total').innerText = isSecretMode ? '***' : grandTotal.toLocaleString('ru-RU');
             document.getElementById('salary-usd').innerText = Math.round(grandTotal / usdRate).toLocaleString('ru-RU');
             document.getElementById('usd-rate').innerText = usdRate.toFixed(2);
 
-            // Отрисовка недельного отчета
             const weekCont = document.getElementById('weekly-summary');
             weekCont.innerHTML = '';
-            
-            Object.values(weekly).forEach(w => {
-                if(w.days > 0 || w.salary !== 0) {
-                    let isNegative = w.salary < 0;
-                    weekCont.innerHTML += `
-                        <div class="bg-pink-50 dark:bg-gray-700/50 p-3 rounded-xl flex justify-between items-center ${isNegative ? 'border border-rose-200' : ''}">
-                            <div>
-                                <p class="text-sm font-bold">${w.name}</p>
-                                <p class="text-[11px] opacity-80">Смен отработано: ${w.days}</p>
-                            </div>
-                            <div class="text-lg font-black ${isNegative ? 'text-rose-500' : ''}">
-                                ${isSecretMode ? '***' : w.salary.toLocaleString('ru-RU')} ₴
-                            </div>
-                        </div>`;
-                }
-            });
+
+            Object.values(weekly)
+                .sort((a, b) => a.monday - b.monday)
+                .forEach(w => {
+                    if (w.days > 0 || w.salary !== 0) {
+                        let isNegative = w.salary < 0;
+                        weekCont.innerHTML += `
+                            <div class="bg-pink-50 dark:bg-gray-700/50 p-3 rounded-xl flex justify-between items-center ${isNegative ? 'border border-rose-200' : ''}">
+                                <div>
+                                    <p class="text-sm font-bold">${w.name}</p>
+                                    <p class="text-[11px] opacity-80">Смен отработано: ${w.days}</p>
+                                </div>
+                                <div class="text-lg font-black ${isNegative ? 'text-rose-500' : ''}">
+                                    ${isSecretMode ? '***' : w.salary.toLocaleString('ru-RU')} ₴
+                                </div>
+                            </div>`;
+                    }
+                });
             if(weekCont.innerHTML === '') weekCont.innerHTML = `<p class="text-xs text-center py-2 opacity-60">Пока пусто</p>`;
 
+            calculateWishlist(salaryUsh + salaryZamena, avgShift);
+        }
             calculateWishlist(salaryUsh + salaryZamena, avgShift); // Цель считаем от всей заработанной суммы
         }
 
