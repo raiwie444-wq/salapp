@@ -87,6 +87,12 @@
                     <button onclick="toggleDarkMode()" class="p-2 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-pink-100 dark:border-gray-700 text-base transition hover:scale-105">🌙</button>
                     <button onclick="toggleSecretMode()" id="btn-secret-mode" class="p-2 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-pink-100 dark:border-gray-700 text-base transition hover:scale-105" title="Режим анти-палево">👁️</button>
                     <button onclick="openBackupModal()" class="p-2 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-pink-100 dark:border-gray-700 text-base transition hover:scale-105" title="Резервная копия">⚙️</button>
+                    <div class="relative group cursor-default p-2 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-pink-100 dark:border-gray-700 text-base transition hover:scale-105">
+                        👤
+                        <div id="user-tooltip" class="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-gray-800 dark:bg-pink-100 text-white dark:text-pink-900 text-xs font-black rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap shadow-lg z-50">
+                            юзернейм
+                        </div>
+                    </div>
                     <button onclick="logout()" class="p-2 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-pink-100 dark:border-gray-700 text-base transition hover:scale-105" title="Выйти">🚪</button>
                 </div>
             </div>
