@@ -60,6 +60,7 @@
     </style>
 </head>
 <body class="p-4 md:p-8 min-h-screen">
+    
     <!-- Окно входа -->
     <div id="login-screen" class="fixed inset-0 bg-pink-50 dark:bg-gray-900 z-[100] flex items-center justify-center p-4" style="display: none;">
         <div class="bg-white dark:bg-gray-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-pink-100 dark:border-gray-700 text-center">
@@ -69,6 +70,7 @@
             <button onclick="doLogin()" class="w-full py-3 bg-pink-500 text-white font-black text-lg rounded-xl shadow-lg hover:bg-pink-600 transition">Войти</button>
         </div>
     </div>
+
     <div class="max-w-7xl mx-auto">
         <header class="mb-6 flex flex-col md:flex-row justify-between items-end gap-4">
             <div class="flex items-center gap-4 flex-wrap">
@@ -254,19 +256,17 @@
         const supabaseUrl = 'https://sjyiahuthorkmwlfkoex.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqeWlhaHV0aG9ya213bGZrb2V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5NjE4ODcsImV4cCI6MjEwMTUzNzg4N30.PqATgEdzh0iFAWNYTCobmBTz-xmPyWajs6LmA-_LXDA';
         const db = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
         let currentUser = localStorage.getItem('zpka_user') || null;
 
         function doLogin() {
             const u = document.getElementById('login-username').value.trim();
             const p = document.getElementById('login-password').value.trim();
             if(!u || !p) return alert('Введи логин и пароль!');
-            
-            // Создаем уникальный шифр из логина и пароля
             currentUser = 'user_' + btoa(u + ':' + p);
             localStorage.setItem('zpka_user', currentUser);
-            
             document.getElementById('login-screen').style.display = 'none';
-            initApp(); // Загружаем данные
+            initApp();
         }
 
         function logout() {
@@ -274,7 +274,7 @@
                 localStorage.removeItem('zpka_user');
                 location.reload();
             }
-        };
+        }
 
         const monthsConfig2026 = [
             { id: '2026-07', name: 'Июль', days: 31, startDay: 3, theme: { bg: 'from-blue-500 to-indigo-600', headerBg: 'bg-blue-100 text-blue-900', focus: '#3b82f6', thumb: '#60a5fa', divider: '#93c5fd', textHex: '#2563eb' } },
@@ -309,7 +309,6 @@
         let salesChartInstance = null;
         let usdRate = 41.50;
 
-        // Авто-определение сегодняшнего дня
         const todayDate = new Date();
         const todayYyyy = todayDate.getFullYear().toString();
         const todayMm = String(todayDate.getMonth() + 1).padStart(2, '0');
@@ -338,7 +337,7 @@
         async function initApp() {
             if (!currentUser) {
                 document.getElementById('login-screen').style.display = 'flex';
-                return; // Ждем пока не войдут в аккаунт
+                return;
             }
 
             if (isDarkMode) document.documentElement.classList.add('dark');
@@ -391,7 +390,7 @@
         }
 
         async function saveApp() {
-            if (!currentUser) return; // Защита от сохранения в пустоту
+            if (!currentUser) return;
 
             const { data: existing } = await db
                 .from('salary_records')
@@ -413,7 +412,6 @@
 
             if (error) console.error("Ошибка сохранения в базу:", error);
         }
-    
 
         function switchYear(year) {
             currentYear = year;
@@ -422,7 +420,6 @@
             });
             document.getElementById(`year-${year}-btn`).className = "year-btn px-4 py-1.5 rounded-lg text-sm font-bold transition-all bg-white text-pink-600 shadow-sm dark:bg-gray-600 dark:text-pink-400";
 
-            // Если переключаем на текущий год - открываем текущий месяц, иначе первый месяц года
             if (year === todayYyyy) {
                 switchMonth(autoMonthId);
             } else {
@@ -524,7 +521,6 @@
                 const tr = document.createElement('tr');
                 tr.className = `record-row border-b border-pink-50/50 dark:border-gray-700/50 ${day.isSunday ? 'week-divider' : ''}`;
                 
-                // ПОДСВЕТКА СЕГОДНЯШНЕГО ДНЯ
                 if (isToday) {
                     tr.id = 'row-today';
                     tr.classList.add('today-row');
@@ -590,7 +586,6 @@
             let rate = mData[index].rate || 0;
             let sales = mData[index].sales || 0;
             
-            // ФИКС ОТЛОЖЕК: Считаем ЗП, если указан магазин ИЛИ есть продажи
             mData[index].salary = (mData[index].shop.trim() !== '' || sales > 0) ? Math.round(sales * (rate / 100)) : 0;
             
             saveApp();
@@ -639,9 +634,8 @@
 
                     let matchedWeekKey = Object.keys(weekly).find(key => t >= weekly[key].monday.getTime() && t <= weekly[key].sunday.getTime());
                     
-                    // Если была реальная смена ИЛИ пробита отложка
                     if (matchedWeekKey && (shopVal !== '' || s > 0)) {
-                        if (shopVal !== '') weekly[matchedWeekKey].days++; // Дни плюсуем только за реальный выход
+                        if (shopVal !== '') weekly[matchedWeekKey].days++;
                         weekly[matchedWeekKey].salary += day.salary;
                     }
 
@@ -651,7 +645,6 @@
                             if (shopVal === '1' || shopVal === 'уш') { ultraDays++; salesUsh += s; salaryUsh += day.salary; }
                             else { zamenaDays++; salaryZamena += day.salary; }
                         } else if (s > 0) {
-                            // Отложка в выходной! Касса и ЗП идут в основной котел, но смен больше не становится
                             salesUsh += s;
                             salaryUsh += day.salary;
                         }
@@ -716,14 +709,6 @@
             if(weekCont.innerHTML === '') weekCont.innerHTML = `<p class="text-xs text-center py-2 opacity-60">Пока пусто</p>`;
 
             calculateWishlist(salaryUsh + salaryZamena, avgShift);
-        }
-            calculateWishlist(salaryUsh + salaryZamena, avgShift); // Цель считаем от всей заработанной суммы
-        }
-
-        function getPreviousMonthId(mId) {
-            let allIds = [...monthsConfig2026, ...monthsConfig2027].map(m => m.id);
-            let idx = allIds.indexOf(mId);
-            return idx > 0 ? allIds[idx - 1] : null;
         }
 
         function calculateWishlist(totalEarned, avgShift) {
@@ -808,7 +793,7 @@
             const container = document.getElementById('yearly-summary-content');
             
             let totalYearDays = 0;
-            let totalYearEarned = 0; // Чисто сколько заработала
+            let totalYearEarned = 0;
             let bestDay = { date: '-', sales: 0, salary: 0, month: '' };
             let monthTotals = [];
 
@@ -850,13 +835,16 @@
         function closeBackupModal() { document.getElementById('backup-modal').style.display = 'none'; }
 
         function downloadBackup() {
-            let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
-            let dlAnchor = document.createElement('a');
-            dlAnchor.setAttribute("href", dataStr);
-            dlAnchor.setAttribute("download", `zpka_backup_${currentYear}.json`);
-            document.body.appendChild(dlAnchor);
-            dlAnchor.click();
-            dlAnchor.remove();
+            const data = JSON.stringify(appData);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `zpka_backup_${currentYear}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
         function uploadBackup(event) {
