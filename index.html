@@ -12,7 +12,6 @@
     <title>зпка</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Подключаем Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <script>
@@ -36,16 +35,9 @@
         ::-webkit-scrollbar-thumb { background: var(--thumb-color, #f9a8d4); border-radius: 4px; }
         
         .record-row { transition: all 0.2s ease-in-out; }
-        .today-row { 
-            border: 2px solid var(--focus-color, #ec4899); 
-            box-shadow: 0 4px 12px rgba(236, 72, 153, 0.15); 
-            background-color: var(--focus-bg, #fdf2f8); 
-        }
+        .today-row { border: 2px solid var(--focus-color, #ec4899); box-shadow: 0 4px 12px rgba(236, 72, 153, 0.15); background-color: var(--focus-bg, #fdf2f8); }
         
-        input {
-            width: 100%; background-color: transparent; border: 1px solid transparent;
-            border-radius: 6px; padding: 4px 8px; outline: none; transition: all 0.2s;
-        }
+        input { width: 100%; background-color: transparent; border: 1px solid transparent; border-radius: 6px; padding: 4px 8px; outline: none; transition: all 0.2s; }
         input:focus { background-color: white; border-color: var(--focus-color, #f472b6); box-shadow: 0 0 0 2px rgba(244, 114, 182, 0.2); }
         
         .week-divider { border-bottom: 3px solid var(--divider-color, #f9a8d4); }
@@ -60,7 +52,6 @@
 </head>
 <body class="p-4 md:p-8 min-h-screen">
     
-    <!-- Окно входа -->
     <div id="login-screen" class="fixed inset-0 bg-pink-50 dark:bg-gray-900 z-[100] flex items-center justify-center p-4" style="display: none;">
         <div class="bg-white dark:bg-gray-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-pink-100 dark:border-gray-700 text-center">
             <h2 class="text-3xl font-black text-pink-600 dark:text-pink-400 mb-6">Вход в ЗПку</h2>
@@ -87,7 +78,6 @@
                     <button onclick="toggleSecretMode()" id="btn-secret-mode" class="p-2 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-pink-100 dark:border-gray-700 text-base transition hover:scale-105" title="Режим анти-палево">👁️</button>
                     <button onclick="openBackupModal()" class="p-2 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-pink-100 dark:border-gray-700 text-base transition hover:scale-105" title="Резервная копия">⚙️</button>
                     
-                    <!-- Человечек -->
                     <div class="relative group cursor-default p-2 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-pink-100 dark:border-gray-700 text-base transition hover:scale-105">
                         👤
                         <div id="user-tooltip" class="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-gray-800 dark:bg-pink-100 text-white dark:text-pink-900 text-xs font-black rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap shadow-lg z-50">
@@ -103,7 +93,6 @@
             </button>
         </header>
 
-        <!-- Вкладки месяцев -->
         <div class="flex flex-wrap gap-1.5 mb-6 border-b-2 border-pink-200/60 dark:border-gray-700 pb-px" id="tabs-container"></div>
 
         <div class="grid grid-cols-1 xl:grid-cols-4 gap-8">
@@ -259,7 +248,6 @@
     </div>
 
     <script>
-        // Инициализация Supabase
         const supabaseUrl = 'https://sjyiahuthorkmwlfkoex.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqeWlhaHV0aG9ya213bGZrb2V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5NjE4ODcsImV4cCI6MjEwMTUzNzg4N30.PqATgEdzh0iFAWNYTCobmBTz-xmPyWajs6LmA-_LXDA';
         const db = window.supabase.createClient(supabaseUrl, supabaseKey);
@@ -267,12 +255,12 @@
         let currentUser = localStorage.getItem('zpka_user') || null;
 
         function doLogin() {
-            // Исправлено: теперь логин не чувствителен к размеру букв!
             const u = document.getElementById('login-username').value.trim().toLowerCase();
             const p = document.getElementById('login-password').value.trim();
             if(!u || !p) return alert('Введи логин и пароль!');
             
-            currentUser = 'user_' + btoa(u + ':' + p);
+            // Фикс для русских букв: шифруем железобетонно
+            currentUser = 'usr_' + encodeURIComponent(u) + '_' + encodeURIComponent(p);
             localStorage.setItem('zpka_user', currentUser);
             localStorage.setItem('zpka_raw_user', document.getElementById('login-username').value.trim()); 
             
@@ -353,20 +341,22 @@
 
             if (isDarkMode) document.documentElement.classList.add('dark');
             
-            // Выводим имя на человечка
             const savedName = localStorage.getItem('zpka_raw_user') || 'Твой аккаунт';
             const tooltip = document.getElementById('user-tooltip');
             if (tooltip) tooltip.innerText = 'Привет, ' + savedName + '!';
             
+            // Фикс базы данных: теперь берем строго 1 строку, игнорируя дубли
             const { data, error } = await db
                 .from('salary_records')
-                .select('data_json, shops_json')
+                .select('data_json, shops_json, id')
                 .eq('user_id', currentUser)
-                .single();
+                .limit(1);
 
-            if (data && data.data_json) {
-                appData = data.data_json;
-                if (data.shops_json) knownShops = data.shops_json;
+            let rowData = (data && data.length > 0) ? data[0] : null;
+
+            if (rowData && rowData.data_json) {
+                appData = rowData.data_json;
+                if (rowData.shops_json) knownShops = rowData.shops_json;
             } else {
                 [...monthsConfig2026, ...monthsConfig2027].forEach(m => {
                     appData[m.id] = { days: generateEmptyDays(m), fop: { d1: '', a1: '', d2: '', a2: '' } };
@@ -412,13 +402,13 @@
                 .from('salary_records')
                 .select('id')
                 .eq('user_id', currentUser)
-                .maybeSingle();
+                .limit(1);
 
             let error;
-            if (existing) {
+            if (existing && existing.length > 0) {
                 const res = await db.from('salary_records')
                     .update({ data_json: appData, shops_json: knownShops })
-                    .eq('user_id', currentUser);
+                    .eq('id', existing[0].id);
                 error = res.error;
             } else {
                 const res = await db.from('salary_records')
@@ -426,7 +416,10 @@
                 error = res.error;
             }
 
-            if (error) console.error("Ошибка сохранения в базу:", error);
+            if (error) {
+                console.error("Ошибка сохранения в базу:", error);
+                alert("Ошибка сохранения в облако! Проверь интернет.");
+            }
         }
 
         function switchYear(year) {
@@ -867,12 +860,14 @@
             let file = event.target.files[0];
             if (!file) return;
             let reader = new FileReader();
-            reader.onload = function(e) {
+            
+            // Фикс бэкапа: теперь он ЖДЕТ, пока данные улетят в облако
+            reader.onload = async function(e) { 
                 try {
                     appData = JSON.parse(e.target.result);
-                    saveApp();
                     renderTable();
-                    alert('Бэкап успешно загружен!');
+                    await saveApp(); 
+                    alert('Бэкап успешно загружен и намертво привязан к облаку!');
                     closeBackupModal();
                 } catch(err) {
                     alert('Ошибка при чтении файла бэкапа.');
