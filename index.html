@@ -36,7 +36,6 @@
         ::-webkit-scrollbar-thumb { background: var(--thumb-color, #f9a8d4); border-radius: 4px; }
         
         .record-row { transition: all 0.2s ease-in-out; }
-        /* Подсветка сегодняшнего дня */
         .today-row { 
             border: 2px solid var(--focus-color, #ec4899); 
             box-shadow: 0 4px 12px rgba(236, 72, 153, 0.15); 
@@ -87,12 +86,15 @@
                     <button onclick="toggleDarkMode()" class="p-2 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-pink-100 dark:border-gray-700 text-base transition hover:scale-105">🌙</button>
                     <button onclick="toggleSecretMode()" id="btn-secret-mode" class="p-2 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-pink-100 dark:border-gray-700 text-base transition hover:scale-105" title="Режим анти-палево">👁️</button>
                     <button onclick="openBackupModal()" class="p-2 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-pink-100 dark:border-gray-700 text-base transition hover:scale-105" title="Резервная копия">⚙️</button>
+                    
+                    <!-- Человечек -->
                     <div class="relative group cursor-default p-2 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-pink-100 dark:border-gray-700 text-base transition hover:scale-105">
                         👤
                         <div id="user-tooltip" class="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-gray-800 dark:bg-pink-100 text-white dark:text-pink-900 text-xs font-black rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap shadow-lg z-50">
                             юзернейм
                         </div>
                     </div>
+
                     <button onclick="logout()" class="p-2 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-pink-100 dark:border-gray-700 text-base transition hover:scale-105" title="Выйти">🚪</button>
                 </div>
             </div>
@@ -213,7 +215,6 @@
                             <button onclick="exportExcel()" class="text-xs bg-pink-50 dark:bg-gray-700 text-pink-600 dark:text-pink-300 px-2.5 py-1.5 rounded-lg font-bold hover:bg-pink-100 transition">📥 Excel</button>
                         </div>
                     </div>
-                    <!-- Список недель будет здесь -->
                     <div class="space-y-2" id="weekly-summary"></div>
                 </div>
             </div>
@@ -266,17 +267,19 @@
         let currentUser = localStorage.getItem('zpka_user') || null;
 
         function doLogin() {
-            const u = document.getElementById('login-username').value.trim();
+            // Исправлено: теперь логин не чувствителен к размеру букв!
+            const u = document.getElementById('login-username').value.trim().toLowerCase();
             const p = document.getElementById('login-password').value.trim();
             if(!u || !p) return alert('Введи логин и пароль!');
             
             currentUser = 'user_' + btoa(u + ':' + p);
             localStorage.setItem('zpka_user', currentUser);
-            localStorage.setItem('zpka_raw_user', u); // Запоминаем логин для значка
+            localStorage.setItem('zpka_raw_user', document.getElementById('login-username').value.trim()); 
             
             document.getElementById('login-screen').style.display = 'none';
-            initApp(); // Загружаем данные
+            initApp();
         }
+
         function logout() {
             if(confirm('Точно выйти из аккаунта?')) {
                 localStorage.removeItem('zpka_user');
@@ -349,7 +352,8 @@
             }
 
             if (isDarkMode) document.documentElement.classList.add('dark');
-            // Показываем логин при наведении на человечка
+            
+            // Выводим имя на человечка
             const savedName = localStorage.getItem('zpka_raw_user') || 'Твой аккаунт';
             const tooltip = document.getElementById('user-tooltip');
             if (tooltip) tooltip.innerText = 'Привет, ' + savedName + '!';
